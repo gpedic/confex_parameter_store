@@ -7,7 +7,7 @@ defmodule Confex.ParameterStore do
   """
 
   def start(_type, _args) do
-    config = Confex.get_env(:confex, __MODULE__, [cache: Confex.Cache])
+    config = Confex.get_env(:confex, __MODULE__, [cache: Confex.ParameterStore.Cache])
     children = [
       worker(config.cache, [])
     ]

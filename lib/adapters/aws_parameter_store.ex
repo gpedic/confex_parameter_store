@@ -50,7 +50,7 @@ defmodule Confex.ParameterStore.Adapter do
 
   # Caching
 
-  In order not to have to fetch values from AWS every time they're requested we use a simple GenServer `Confex.Cache` to cache retrieved values
+  In order not to have to fetch values from AWS every time they're requested we use a simple GenServer `Confex.ParameterStore.Cache` to cache retrieved values
   in a map inside it's state. This effectively gives us a very simple in-memory key value store.
   """
 
