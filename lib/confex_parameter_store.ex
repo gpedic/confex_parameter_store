@@ -7,9 +7,10 @@ defmodule Confex.ParameterStore do
   """
 
   def start(_type, _args) do
-    config = Confex.get_env(:confex, __MODULE__, [cache: Confex.ParameterStore.Cache])
+    config = Confex.get_env(:confex, __MODULE__, [cache: Confex.ParameterStore.Cache]) |> IO.inspect
+
     children = [
-      worker(config.cache, [])
+      worker(config[:cache], [])
     ]
     Supervisor.start_link(children, strategy: :one_for_one)
   end
