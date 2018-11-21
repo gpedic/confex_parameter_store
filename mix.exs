@@ -2,7 +2,7 @@ defmodule ConfexParameterStore.MixProject do
   use Mix.Project
 
   @name "Confex Parameter Store Adapter"
-  @version "1.0.0"
+  @version "1.1.0"
   @url "https://github.com/gpedic/confex_parameter_store"
 
   def project do

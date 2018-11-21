@@ -28,7 +28,11 @@ $ mix test --include external:true
 
 ## Usage
 
-Usage is the same as described in the original [Confex Usage section](https://github.com/Nebo15/confex#usage), we simply use the provided adapter.
+Usage is mostly the same as described in the original [Confex Usage section](https://github.com/Nebo15/confex#usage), we simply use the provided adapter.
+Where it differes is when fetching parameters by path we need to provide a custom type tuple
+
+## Single parameters
+
 
 ```elixir
 config :my_app, MyApp.MyQueue,
@@ -39,10 +43,144 @@ config :my_app, MyApp.MyQueue,
   ]
 ```
 
-The content of the ENV variables has to contain the prefix `parameter:`
+The values of the ENV variables containing the paths we want to fetch from the parameter store must be prefixed by `parameter:`
 
-```
-OUT_QUEUE_NAME=parameter:/queue/name
+```bash
+OUT_QUEUE_NAME=parameter:/queue/out/name
 OUT_PORT=parameter:/queue/out/port
 OUT_ROUTING_KEY=parameter:/queue/out/routing_key
+```
+
+Assuming our parameter store values are:
+```js
+%{
+  "InvalidParameters" => [],
+  "Parameters" => [
+    %{
+      "Name" => "/queue/out/name",
+      "Type" => "String",
+      "Value" => "MyQueueName",
+      "Version" => 1
+    },
+    %{
+      "Name" => "/queue/out/port",
+      "Type" => "String",
+      "Value" => "1234",
+      "Version" => 1
+    },
+    %{
+      "Name" => "/queue/out/routing_key",
+      "Type" => "String",
+      "Value" => "test",
+      "Version" => 1
+    }
+  ]
+}
+```
+
+When fetched this will return
+
+```elixir
+iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
+{:ok, [
+  queue: [
+    name: "MyQueueName",
+    port: 1234,
+    routing_key: "test"
+  ]
+]}
+```
+
+## Recursive by path
+
+When dealing with many parameters contained under a path it can be more efficient to request all parameters under the given path instead of each one individually.
+
+To accompilsh this all we need to do is change our ENV variable prefix from `parameter:` to `parameters_by_path:`
+
+```
+OUT_QUEUE_PARAMS=parameters_by_path:/queue/out/
+```
+
+Now we can adjust our config to:
+
+```elixir
+config :my_app, MyApp.MyQueue,
+  queue: {{:via, Confex.Adapters.ParameterStore}, "OUT_QUEUE_PARAMS"}
+```
+
+Fetching the config returns a similar result to fetching the values individually with the notable exception of `:port` which is now a string.
+
+
+
+```elixir
+iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
+{:ok, [
+  queue: [
+    name: "MyQueueName",
+    port: "1234",
+    routing_key: "test"
+  ]
+]}
+```
+
+The keys in the returned list are based on the values path, more specifically the last segment of the path, note that the list returned is flat and doesn't contained nested lists.
+
+| path examples            | key          |
+| ------------------------ | ------------ |
+| `/queue/id`              | :id          |
+| `/queue/out/name`        | :name        |
+| `/queue/out/ext/timeout` | :timeout     |
+
+The above example if queried by the path `/queue/` would thus return a list with the following values:
+```elixir
+[
+  id: "someid",
+  name: "somename",
+  timeout: "sometimeout"
+]
+```
+
+If multiple paths end in same key the returned list will contain duplicate keys, this may not be something you want so be warned.
+
+As before all values default to strings, if we want to cast `port` to an integer we have to define a custom type using the included [Confex.ParameterStore.TypeResolver](lib/confex/parameter_store/type_resolver.ex) module.
+
+The `cast` function it defines takes as argument a keyword list of atom names and the type to cast it to.
+
+```elixir
+use Mix.Config
+
+alias Confex.ParameterStore.TypeResolver
+
+config :my_app, MyApp.MyQueue,
+  queue: {
+    {:via, Confex.Adapters.ParameterStore},
+    {TypeResolver, :cast, [[port: :integer]]},
+    "OUT_QUEUE_PARAMS"
+  }
+```
+
+The types are identical to regular Confex types.
+
+  | Confex Type | Elixir Type       | Description |
+  | ----------- | ----------------- | ----------- |
+  | `:string`   | `String.t`        | Default.    |
+  | `:integer`  | `Integer.t`       | Parse Integer value in string. |
+  | `:float`    | `Float.t`         | Parse Float value in string. |
+  | `:boolean`  | `true` or `false` | Cast 'true', '1', 'yes' to `true`; 'false', '0', 'no' to `false`. |
+  | `:atom`     | `atom()`          | Cast string to atom. |
+  | `:module`   | `module()`        | Cast string to module name. |
+  | `:list`     | `List.t`          | Cast comma-separated string (`1,2,3`) to list (`[1, 2, 3]`). |
+
+
+After this change `:port` will be returned as integer like before
+
+```elixir
+iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
+{:ok, [
+  queue: [
+    name: "MyQueueName",
+    port: 1234,
+    routing_key: "test"
+  ]
+]}
 ```

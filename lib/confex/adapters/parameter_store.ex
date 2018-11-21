@@ -92,6 +92,7 @@ defmodule Confex.Adapters.ParameterStore do
 
   @spec fetch_parameter(binary) :: {:ok, binary} | :error
   defp fetch_parameter("parameter:" <> path), do: @provider.get_parameter(path)
+  defp fetch_parameter("parameters_by_path:" <> path), do: @provider.get_parameters_by_path(path)
   defp fetch_parameter(value) when is_binary(value), do: {:ok, value}
   defp fetch_parameter(_), do: :error
 end
