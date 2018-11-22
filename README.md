@@ -140,7 +140,7 @@ The above example if queried by the path `/queue/` would thus return a list with
 ]
 ```
 
-If multiple paths end in same key the returned list will contain duplicate keys, this may not be something you want so be warned.
+If multiple paths end in same key the returned list will contain duplicate keys, this may not be something you want.
 
 As before all values default to strings, if we want to cast `port` to an integer we have to define a custom type using the included [Confex.ParameterStore.TypeResolver](lib/confex/parameter_store/type_resolver.ex) module.
 
@@ -166,10 +166,10 @@ The types are identical to regular Confex types.
   | `:string`   | `String.t`        | Default.    |
   | `:integer`  | `Integer.t`       | Parse Integer value in string. |
   | `:float`    | `Float.t`         | Parse Float value in string. |
-  | `:boolean`  | `true` or `false` | Cast 'true', '1', 'yes' to `true`; 'false', '0', 'no' to `false`. |
+  | `:boolean`  | `true` or `false` | Cast "true", "1", "yes" to `true`; "false", "0", "no" to `false`. |
   | `:atom`     | `atom()`          | Cast string to atom. |
   | `:module`   | `module()`        | Cast string to module name. |
-  | `:list`     | `List.t`          | Cast comma-separated string (`1,2,3`) to list (`[1, 2, 3]`). |
+  | `:list`     | `List.t`          | Cast comma-separated string `"1,2,3"` to list `["1", "2", "3"]`. |
 
 
 After this change `:port` will be returned as integer like before
@@ -184,3 +184,29 @@ iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
   ]
 ]}
 ```
+
+## IAM policy example
+The following policy allows a user to successfully request and decrypt parameters stores under the path `/queue/out/staging/*`
+
+We can only decrypt SecureString parameters if we have access to the key they were encrypted with.
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "kms:Decrypt",
+                "ssm:GetParametersByPath",
+                "ssm:GetParameter"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:111122223333:parameter/queue/out/staging/*",
+                "arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+            ]
+        }
+    ]
+}
+```
+This policy can then be attached to any EC2 Instance IAM role, ECS Container Instance IAM role or Lambda Execution role we wish to give access to the parameters.
