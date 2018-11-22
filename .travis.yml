@@ -1,0 +1,12 @@
+sudo: required
+language: elixir
+elixir:
+  - "1.7"
+  - "1.6"
+  - "1.5"
+services:
+  - docker
+before_script:
+  - docker-compose up -d
+script:
+  - MIX_ENV=test mix test --include external:true
