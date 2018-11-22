@@ -9,4 +9,4 @@ services:
 before_script:
   - docker-compose up -d
 script:
-  - MIX_ENV=test mix test --include external:true
+  - MIX_ENV=test mix coveralls.travis --include external:true

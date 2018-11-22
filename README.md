@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/gpedic/confex_parameter_store.svg?branch=master)](https://travis-ci.com/gpedic/confex_parameter_store)
+[![Coverage Status](https://coveralls.io/repos/github/gpedic/confex_parameter_store/badge.svg?branch=master)](https://coveralls.io/github/gpedic/confex_parameter_store?branch=master)
+
 # Confex Parameter Store Adapter
 
 This adapter allows Confex to fetch parameters from the [AWS Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html).
