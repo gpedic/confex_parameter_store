@@ -4,35 +4,30 @@ defmodule Confex.ParameterStore.ProviderImpl do
   require Logger
 
   def get_parameter(path) do
-    resp = ExAws.SSM.get_parameter(path, with_decryption: true) |> ExAws.request()
-
-    case resp do
-      {:ok, param} ->
-        {:ok, Kernel.get_in(param, ["Parameter", "Value"])}
-
-      {:error, err} ->
-        "ParameterStore error:\n #{inspect(elem(err, 2))}"
-        |> Logger.error(module: __MODULE__)
-
-        :error
-    end
+    ExAws.SSM.get_parameter(path, with_decryption: true)
+    |> ExAws.request()
+    |> parse_resp()
   end
 
   def get_parameters_by_path(path) do
-    resp =
-      ExAws.SSM.get_parameters_by_path(path, with_decryption: true, recursive: true)
-      |> ExAws.request()
+    ExAws.SSM.get_parameters_by_path(path, with_decryption: true, recursive: true)
+    |> ExAws.request()
+    |> parse_resp()
+  end
 
-    case resp do
-      {:ok, params} ->
-        params
-        |> Map.get("Parameters")
-        |> Enum.map(fn param -> parse_path_param(param) end)
-        |> (&{:ok, &1}).()
+  defp parse_resp({:ok, %{"Parameter" => param}}) do
+    {:ok, Map.get(param, "Value")}
+  end
 
-      _ ->
-        :error
-    end
+  defp parse_resp({:ok, %{"Parameters" => params}}) do
+    params
+    |> Enum.map(fn param -> parse_path_param(param) end)
+    |> (&{:ok, &1}).()
+  end
+
+  defp parse_resp({:error, err}) do
+    Logger.error("Error requesting parameter: #{inspect(elem(err, 2))}")
+    :error
   end
 
   defp parse_path_param(param) do
@@ -40,6 +35,8 @@ defmodule Confex.ParameterStore.ProviderImpl do
   end
 
   defp parse_param_name_atom(param_path) do
-    Regex.run(@path_regex, param_path) |> List.last() |> String.to_atom()
+    Regex.run(@path_regex, param_path)
+    |> List.last()
+    |> String.to_atom()
   end
 end
