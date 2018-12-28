@@ -18,8 +18,7 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
+Docs can
 be found at [https://hexdocs.pm/confex_parameter_store](https://hexdocs.pm/confex_parameter_store).
 
 ## Testing
@@ -31,22 +30,13 @@ $ mix test --include external:true
 
 ## Usage
 
-Usage is mostly the same as described in the original [Confex Usage section](https://github.com/Nebo15/confex#usage), we simply use the provided adapter.
-Where it differes is when fetching parameters by path we need to provide a custom type tuple
+Usage is mostly the same as described in the original [Confex Usage docs](https://github.com/Nebo15/confex#usage) when parameters are fetched explicitly, we simply use the provided adapter.
+
+There are some differences when parameters are fetched recursively which we will cover in that section of the docs.
 
 ## Single parameters
 
-
-```elixir
-config :my_app, MyApp.MyQueue,
-  queue: [
-    name: {{:via, Confex.Adapters.ParameterStore}, :string, "OUT_QUEUE_NAME", "MyQueueOut"},
-    routing_key: {{:via, Confex.Adapters.ParameterStore}, "OUT_ROUTING_KEY", ""},
-    port: {{:via, Confex.Adapters.ParameterStore}, :integer, "OUT_PORT", 1234},
-  ]
-```
-
-The values of the ENV variables containing the paths we want to fetch from the parameter store must be prefixed by `parameter:`
+To have Confex fetch parameters from the parameter store define the ENV value as the parameter store path we want to fetch prefixed by `parameter:`
 
 ```bash
 OUT_QUEUE_NAME=parameter:/queue/out/name
@@ -54,34 +44,30 @@ OUT_PORT=parameter:/queue/out/port
 OUT_ROUTING_KEY=parameter:/queue/out/routing_key
 ```
 
-Assuming our parameter store values are:
-```js
-%{
-  "InvalidParameters" => [],
-  "Parameters" => [
-    %{
-      "Name" => "/queue/out/name",
-      "Type" => "String",
-      "Value" => "MyQueueName",
-      "Version" => 1
-    },
-    %{
-      "Name" => "/queue/out/port",
-      "Type" => "String",
-      "Value" => "1234",
-      "Version" => 1
-    },
-    %{
-      "Name" => "/queue/out/routing_key",
-      "Type" => "String",
-      "Value" => "test",
-      "Version" => 1
-    }
+Non prefixed ENV will simply be passed through as the case when using the `:system` adapter.
+
+Now we can add the values to our `config.exs`
+```elixir
+use Mix.Config
+alias Confex.Adapters.ParameterStore
+
+config :my_app, MyApp.MyQueue,
+  queue: [
+    name: {{:via, ParameterStore}, :string, "OUT_QUEUE_NAME", "MyQueueOut"},
+    port: {{:via, ParameterStore}, :integer, "OUT_PORT", 1234},
+    routing_key: {{:via, ParameterStore}, "OUT_ROUTING_KEY", ""},
   ]
-}
 ```
 
-When fetched this will return
+Let's say our parameter store values are:
+
+| path | value |
+| ---  | ----- |
+|/queue/out/name   | "MyQueueName" |
+|/queue/out/port   | "1234" |
+|/queue/out/routing_key| "test" |
+
+Then `fetch_env` will return the following:
 
 ```elixir
 iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
@@ -98,7 +84,7 @@ iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
 
 When dealing with many parameters contained under a path it can be more efficient to request all parameters under the given path instead of each one individually.
 
-To accompilsh this all we need to do is change our ENV variable prefix from `parameter:` to `parameters_by_path:`
+All we need to do is change our ENV variable prefix from `parameter:` to `parameters_by_path:`
 
 ```
 OUT_QUEUE_PARAMS=parameters_by_path:/queue/out/
@@ -111,9 +97,7 @@ config :my_app, MyApp.MyQueue,
   queue: {{:via, Confex.Adapters.ParameterStore}, "OUT_QUEUE_PARAMS"}
 ```
 
-Fetching the config returns a similar result to fetching the values individually with the notable exception of `:port` which is now a string.
-
-
+Fetching the config returns a similar result to fetching the values individually before with the exception of `:port` being returned as a string.
 
 ```elixir
 iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
@@ -126,34 +110,39 @@ iex> Confex.fetch_env(:my_app, MyApp.MyQueue)
 ]}
 ```
 
-The keys in the returned list are based on the values path, more specifically the last segment of the path, note that the list returned is flat and doesn't contained nested lists.
+Note that only the last segment of each returned path are used as keys.
 
-| path examples            | key          |
+| path examples            | returned key |
 | ------------------------ | ------------ |
 | `/queue/id`              | :id          |
 | `/queue/out/name`        | :name        |
-| `/queue/out/ext/timeout` | :timeout     |
+| `/queue/out/conf/port`   | :port        |
 
-The above example if queried by the path `/queue/` would thus return a list with the following values:
+The above example if queried by the path `/queue/` thus returns the list:
+
 ```elixir
 [
   id: "someid",
   name: "somename",
-  timeout: "sometimeout"
+  port: "1234"
 ]
 ```
 
-If multiple paths end in same key the returned list will contain duplicate keys, this may not be something you want.
+Note that if multiple paths end in same key the returned list will contain duplicate keys, this may not be something you want.
 
-As before all values default to strings, if we want to cast `port` to an integer we have to define a custom type using the included [Confex.ParameterStore.TypeResolver](lib/confex/parameter_store/type_resolver.ex) module.
+### Type casting
+Type casting for parameters retrieved by path is a bit different as well.
+If we want to for example cast the above `port` to integer we have to use the included [Confex.ParameterStore.TypeResolver](lib/confex/parameter_store/type_resolver.ex) module.
 
-The `cast` function it defines takes as argument a keyword list of atom names and the type to cast it to.
+
+TypeResolver provides a `cast/1` which we give confex instead of a regular type, `cast/1` accepts a keyword list of atom names and types to cast them to.
 
 ```elixir
 use Mix.Config
 
 alias Confex.ParameterStore.TypeResolver
 
+# cast /queue/out/conf/port to integer
 config :my_app, MyApp.MyQueue,
   queue: {
     {:via, Confex.Adapters.ParameterStore},
@@ -213,3 +202,8 @@ We can only decrypt SecureString parameters if we have access to the key they we
 }
 ```
 This policy can then be attached to any EC2 Instance IAM role, ECS Container Instance IAM role or Lambda Execution role we wish to give access to the parameters.
+
+
+## Caching
+
+Consider using some form of caching for values that are retrieved repeatedly as there is a considerable network latency overhead as parameters are retrieved via http.
