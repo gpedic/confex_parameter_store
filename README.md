@@ -3,7 +3,7 @@
 
 # Confex Parameter Store Adapter
 
-This adapter allows Confex to fetch parameters from the [AWS Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html).
+This adapter allows [Confex](https://github.com/Nebo15/confex) to fetch parameters from the [AWS Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html).
 
 ## Installation
 
@@ -18,10 +18,10 @@ def deps do
 end
 ```
 
-Docs can
-be found at [https://hexdocs.pm/confex_parameter_store](https://hexdocs.pm/confex_parameter_store).
+Docs can be found at [https://hexdocs.pm/confex_parameter_store](https://hexdocs.pm/confex_parameter_store).
 
 ## Testing
+
 To run integration tests run the included `docker-compose.yml` using `docker-compose up`, this will start a local AWS SSM at `localhost:4583` using [localstack](https://github.com/localstack/localstack).
 Now we can include integration tests by running `mix test` as:
 ```
@@ -131,6 +131,7 @@ The above example if queried by the path `/queue/` thus returns the list:
 Note that if multiple paths end in same key the returned list will contain duplicate keys, this may not be something you want.
 
 ### Type casting
+
 Type casting for parameters retrieved by path is a bit different as well.
 If we want to for example cast the above `port` to integer we have to use the included [Confex.ParameterStore.TypeResolver](lib/confex/parameter_store/type_resolver.ex) module.
 
@@ -206,4 +207,4 @@ This policy can then be attached to any EC2 Instance IAM role, ECS Container Ins
 
 ## Caching
 
-Consider using some form of caching for values that are retrieved repeatedly as there is a considerable network latency overhead as parameters are retrieved via http.
+Consider using some form of caching for values that are retrieved repeatedly since there is a considerable network latency overhead when parameters are retrieved via http.
