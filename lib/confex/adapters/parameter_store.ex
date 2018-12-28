@@ -85,9 +85,10 @@ defmodule Confex.Adapters.ParameterStore do
   @doc """
   Fetch value from the Parameter Store which path is specified in an environment variable.
   """
-  @spec fetch_value(binary) :: {:ok, binary} | :error
+  @spec fetch_value(binary) :: {:ok, any()} | :error
   def fetch_value(key) do
-    System.get_env(key) |> fetch_parameter
+    System.get_env(key)
+    |> fetch_parameter
   end
 
   @spec fetch_parameter(binary) :: {:ok, binary} | :error
