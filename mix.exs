@@ -14,6 +14,7 @@ defmodule ConfexParameterStore.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),
+      description: description(),
       package: package(),
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [coveralls: :test]
@@ -60,5 +61,11 @@ defmodule ConfexParameterStore.MixProject do
       {:poison, "~> 3.0"},
       {:hackney, "~> 1.9"}
     ]
+  end
+
+  defp description do
+    """
+    An adapter for Confex to add support for fetching config values from the AWS Parameter Store.
+    """
   end
 end
