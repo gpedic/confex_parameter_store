@@ -35,7 +35,7 @@ defmodule ConfexParameterStore.MixProject do
 
   defp docs() do
     [
-      main: @name,
+      main: "Confex.Adapters.ParameterStore",
       source_ref: "v#{@version}",
       source_url: @url,
       extras: [
